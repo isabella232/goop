@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/liquidm/colors"
-	"github.com/liquidm/goop"
+	"github.com/liquidm/goop/colors"
+	"github.com/liquidm/goop/goop"
 )
 
 func main() {
