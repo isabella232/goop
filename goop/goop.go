@@ -11,9 +11,9 @@ import (
 
 	"code.google.com/p/go.tools/go/vcs"
 
-	"github.com/nitrous-io/goop/colors"
-	"github.com/nitrous-io/goop/parser"
-	"github.com/nitrous-io/goop/pkg/env"
+	"github.com/liquidm/goop/colors"
+	"github.com/liquidm/goop/parser"
+	"github.com/liquidm/goop/pkg/env"
 )
 
 type UnsupportedVCSError struct {
@@ -327,6 +327,16 @@ func (g *Goop) currentRev(vcsCmd string, path string) (string, error) {
 		} else {
 			return strings.TrimSpace(string(rev)), err
 		}
+	case "bzr":
+		cmd := exec.Command("bzr", "revno")
+		cmd.Dir = path
+		cmd.Stderr = g.stderr
+		rev, err := cmd.Output()
+		if err != nil {
+			return "", err
+		} else {
+			return strings.TrimSpace(string(rev)), err
+		}
 	}
 	return "", &UnsupportedVCSError{VCS: vcsCmd}
 }
@@ -356,6 +366,12 @@ func (g *Goop) checkout(vcsCmd string, path string, tag string) error {
 			return err
 		}
 		return g.quietCommand(path, "hg", "update", tag).Run()
+	case "bzr":
+		err := g.command(path, "bzr", "update").Run()
+		if err != nil {
+			return err
+		}
+		return g.quietCommand(path, "bzr", "update", "-r", tag).Run()
 	}
 	return &UnsupportedVCSError{VCS: vcsCmd}
 }
