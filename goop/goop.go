@@ -365,13 +365,13 @@ func (g *Goop) checkout(vcsCmd string, path string, tag string) error {
 		if err != nil {
 			return err
 		}
-		return g.quietCommand(path, "hg", "update", tag)
+		return g.quietCommand(path, "hg", "update", tag).Run()
 	case "bzr":
-		err := g.execInPath(path, "bzr", "update")
+		err := g.command(path, "bzr", "update").Run()
 		if err != nil {
 			return err
 		}
-		return g.quietCommand(path, "bzr", "update", "-r", tag)
+		return g.quietCommand(path, "bzr", "update", "-r", tag).Run()
 	}
 	return &UnsupportedVCSError{VCS: vcsCmd}
 }
