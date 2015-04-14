@@ -1,6 +1,10 @@
 Goop
 ====
 
+We need to use this until Bzr support is enabled in offical branch.
+
+===
+
 ![Goopie](https://raw.githubusercontent.com/nitrous-io/goop/master/goopie.png)
 
 A dependency manager for Go (golang), inspired by Bundler. It is different from other dependency managers in that it does not force you to mess with your `GOPATH`.
