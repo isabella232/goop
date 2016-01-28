@@ -1,9 +1,14 @@
 package goop
 
 import (
+	"go/build"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
+	"sort"
+	"strings"
 )
 
 var goGetDownloadRe = regexp.MustCompile(`(?m)^(\S+)\s+\(download\)$`)
@@ -37,7 +42,42 @@ func (d *DownloadRecorder) Downloads() []string {
 }
 
 func (g *Goop) goGet(pkgpath string, gopath string) ([]string, error) {
-	cmd := exec.Command("go", "get", "-d", "-v", "./...")
+	pkgs := map[string]bool{}
+
+	sourceDirs, err := sourceDirs(pkgpath)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, sourceDir := range sourceDirs {
+		if sourceDir == pkgpath {
+			sourceDir = ""
+		}
+		downloads, err := g.goGetSingle(pkgpath, gopath, sourceDir)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, pkg := range downloads {
+			pkgs[pkg] = true
+		}
+	}
+
+	ret := make([]string, 0, len(pkgs))
+
+	for pkg, _ := range pkgs {
+		ret = append(ret, pkg)
+	}
+
+	return ret, nil
+}
+
+func (g *Goop) goGetSingle(pkgpath string, gopath string, subdir string) ([]string, error) {
+	path := "."
+	if subdir != "" {
+		path = "./" + subdir
+	}
+	cmd := exec.Command("go", "get", "-d", "-v", path)
 	env := g.patchedEnv(true)
 	env["GOPATH"] = gopath
 	cmd.Dir = pkgpath
@@ -52,4 +92,59 @@ func (g *Goop) goGet(pkgpath string, gopath string) ([]string, error) {
 	}
 
 	return dlRec.Downloads(), nil
+}
+
+func sourceDirs(root string) ([]string, error) {
+	folders := map[string]bool{}
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			parent, folder := filepath.Split(path)
+			if folder == "testdata" || strings.HasPrefix(folder, "_") || strings.HasPrefix(folder, ".") {
+				return filepath.SkipDir
+			}
+
+			if folders[parent] {
+				return filepath.SkipDir
+			}
+
+			_, err := build.ImportDir(path, 0)
+			if _, noGoError := err.(*build.NoGoError); noGoError {
+				return nil
+			}
+
+			folders[path] = false
+		} else {
+			if len(path) > 3 && path[len(path)-3:] == ".go" && (len(path) < 8 || path[len(path)-8:] != "_test.go") {
+				root := filepath.Dir(path)
+				if _, ok := folders[root]; ok {
+					folders[root] = true
+				}
+			}
+		}
+
+		return nil
+	})
+
+	ret := []string{}
+
+	for folder, isSource := range folders {
+		if isSource && !strings.Contains(folder, "/internal/") {
+			if folder == root {
+				folder = "."
+			}
+			ret = append(ret, strings.TrimPrefix(folder, root+"/"))
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Strings(ret)
+
+	return ret, nil
 }
