@@ -103,7 +103,8 @@ func sourceDirs(root string) ([]string, error) {
 
 		if info.IsDir() {
 			parent, folder := filepath.Split(path)
-			if folder == "testdata" || strings.HasPrefix(folder, "_") || strings.HasPrefix(folder, ".") {
+			if folder == "testdata" || folder == "internal" || folder == "vendor" ||
+				strings.HasPrefix(folder, "_") || strings.HasPrefix(folder, ".") {
 				return filepath.SkipDir
 			}
 
@@ -132,7 +133,7 @@ func sourceDirs(root string) ([]string, error) {
 	ret := []string{}
 
 	for folder, isSource := range folders {
-		if isSource && !strings.Contains(folder, "/internal/") {
+		if isSource {
 			if folder == root {
 				folder = "."
 			}
